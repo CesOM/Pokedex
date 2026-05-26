@@ -17,3 +17,4 @@ import { PokemonSchema, Pokemon } from './entities/pokemon.entity';
   ]
 })
 export class PokemonModule {}
+
