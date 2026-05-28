@@ -12,9 +12,9 @@ import { PokemonSchema, Pokemon } from './entities/pokemon.entity';
       {
         name: Pokemon.name,
         schema: PokemonSchema,
-      }
-    ])
-  ]
+      },
+    ]),
+  ],
 })
 export class PokemonModule {}
 
