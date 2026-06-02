@@ -7,9 +7,10 @@ import {
 import { CreatePokemonDto } from './dto/create-pokemon.dto';
 import { UpdatePokemonDto } from './dto/update-pokemon.dto';
 import { MongoServerError } from 'mongodb';
-import { Model } from 'mongoose';
+import { isValidObjectId, Model } from 'mongoose';
 import { Pokemon } from './entities/pokemon.entity';
 import { InjectModel } from '@nestjs/mongoose';
+import { Server } from 'http';
 
 @Injectable()
 export class PokemonService {
@@ -24,13 +25,9 @@ export class PokemonService {
       const pokemon = await this.pokemonModel.create(createPokemon);
       return pokemon;
     } catch (error) {
-      if (error instanceof MongoServerError && error.code === 11000) {
-        throw new BadRequestException(
-          `Pokemon exists in db ${JSON.stringify(error.keyValue)}`,
-        );
-      }
-      console.log(error)
-      throw new InternalServerErrorException(`Can't create pokeomn - check server logs`);
+      
+      this.handleExceptions(error);
+
     }
   }
 
@@ -49,6 +46,11 @@ export class PokemonService {
       });
     }
 
+    // MongoID
+    if( isValidObjectId( term ) ){
+      pokemon = await this.pokemonModel.findById(term);
+    }
+
     if (!pokemon) {
       throw new NotFoundException(`Pokemon with term ${term} not found`);
     }
@@ -56,11 +58,45 @@ export class PokemonService {
     return pokemon;
   }
 
-  update(id: number, updatePokemonDto: UpdatePokemonDto) {
-    return `This action updates a #${id} pokemon`;
+  async update(term: string, updatePokemonDto: UpdatePokemonDto) {
+
+    try {
+      const pokemon = await this.findOne(term);
+  
+      if( updatePokemonDto.name )
+          updatePokemonDto.name = updatePokemonDto.name.toLowerCase();
+  
+      const updatePokemon = await pokemon.updateOne( updatePokemonDto, {new: true})
+      return {...pokemon.toJSON(), ...updatePokemonDto};
+    }catch(error){
+      
+      this.handleExceptions(error);
+
+    }
+    
+
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} pokemon`;
+  async remove(id: string) {
+    try{
+      const pokemon = await this.findOne(id)
+      await pokemon.deleteOne()
+
+      return 'Pokemon eliminado correctamente';
+    }catch(error){
+
+      this.handleExceptions(error);
+
+    }
+  }
+
+  private handleExceptions (error: any){
+    if(error instanceof MongoServerError && error.code === 11000){
+      throw new BadRequestException(
+        `Pokemon exists in DB ${JSON.stringify(error.keyValue)}`,
+      )
+    }
+    console.log(error)
+    throw new InternalServerErrorException(`Can't create pokeomn - check server logs`);
   }
 }
